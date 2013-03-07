@@ -1,0 +1,59 @@
+#/bin/sh
+#####################################################################
+#File Name: emailNewPodcast
+#Version: 0.0.1
+#Author: Keith Lewis
+#Description: This script will search the podcast download directory
+#             for newly downloaded podcasts and email the user.
+#             Please note that to have emails sent, the host computer 
+#             must have a working SMTP server such as exim4 which is 
+#             I currently use on my home server.    
+#Location of script: /usr/bin/ 
+# Version 0.0.1: File Created
+#####################################################################
+
+LOOPCNT=0
+CURRDATE=$(date +%F)
+M3ULENGTH=18
+
+#DOWNLOAD: Enter the directory the poscast aggregator will plave the 
+#          new files.
+DOWNLOAD="/home/dm/podcastDownloads"
+
+# EMAIL: Enter the email to send update notifications to
+EMAIL="youremail@mail.com"
+
+cd $DOWNLOAD
+#fill the list of files or directories into an array
+FILELIST=($(ls -l $DOWNLOAD | awk '{print $9}'))
+
+#Get the array size
+ARRAYSIZE=${#FILELIST[@]}
+
+while [ $LOOPCNT -lt $ARRAYSIZE ]
+do
+  CURRFILE=${FILELIST["$LOOPCNT"]}
+  LASTMOD=$(date +%F -r "$CURRFILE") 
+
+  if [ "$CURRDATE" = "$LASTMOD" ]
+  then
+    if [ ${#CURRFILE} -eq $M3ULENGTH ]
+    then
+      #Check if it is an m3u file and skip if it is
+      M3U=$(echo $CURRFILE | cut -c 15-18)
+      if [ "$M3U" = ".m3u" ]
+      then
+          LOOPCNT=$(($LOOPCNT +1))
+      fi 
+    else
+      echo "You have a new Episode of $CURRFILE" >> /tmp/newepisodes.txt 
+    fi
+  fi
+  LOOPCNT=$(($LOOPCNT +1))
+done
+
+#Send the email of the new podcasts
+mail -s "You have new podcasts" "$EMAIL" < /tmp/newepisodes.txt
+
+#Remove the temp file
+rm /tmp/newepisodes.txt
